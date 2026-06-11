@@ -112,3 +112,12 @@ def test_norway_problem_end_to_end(run):
 
 def test_join_output(run):
     assert run(["-j", ".a, .b"], stdin="a: x\nb: y\n")[1] == "xy"
+
+
+def test_options_after_positionals(run, tmp_path):
+    """jq-style flag placement must work on every Python version."""
+    f = tmp_path / "c.yaml"
+    f.write_text("a: 1\n")
+    assert run([".a", str(f), "-o", "json"])[1] == "1\n"
+    assert run([".a", "-o", "json", str(f)])[1] == "1\n"
+    assert run([".a", str(f), "--argjson", "x", "5", "-o", "json", "-c"])[1] == "1\n"

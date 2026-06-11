@@ -144,10 +144,13 @@ def main():
             ("yq (Go)", [yq, filt, big] if yq else None),
             ("kislyuk yq", [kyq, filt, big] if kyq else None),
         ]),
+        # Both sides emit pretty JSON: yq's compact mode (-I0) has a
+        # quadratic blowup on large arrays (20k rows take it ~104s) and
+        # benchmarking against a pathology would flatter us dishonestly.
         ("large yaml -> json", [
-            ("pureyq", [pureyq_bin, "-o", "json", "-c", ".", big]),
-            ("yq (Go)", [yq, "-o=json", "-I0", ".", big] if yq else None),
-            ("kislyuk yq", [kyq, "-c", ".", big] if kyq else None),
+            ("pureyq", [pureyq_bin, "-o", "json", ".", big]),
+            ("yq (Go)", [yq, "-o=json", ".", big] if yq else None),
+            ("kislyuk yq", [kyq, ".", big] if kyq else None),
         ]),
     ]
 

@@ -57,9 +57,37 @@ def _build_parser():
     return ap
 
 
+_TAKES_ONE = {"-p", "--input-format", "-o", "--output-format",
+              "--indent", "-f", "--from-file"}
+_TAKES_TWO = {"--arg", "--argjson"}
+
+
+def _reorder(argv):
+    """Let options appear anywhere, like jq: before Python 3.12, argparse
+    stops recognizing options once positionals begin, so `pureyq .x -o json
+    file` would fail there. Deterministically sort options to the front."""
+    opts, pos = [], []
+    i, n = 0, len(argv)
+    while i < n:
+        a = argv[i]
+        if a == "--":
+            pos.extend(argv[i + 1:])
+            break
+        if a.startswith("-") and a != "-":
+            take = 3 if a in _TAKES_TWO else 2 if a in _TAKES_ONE else 1
+            opts.extend(argv[i:i + take])
+            i += take
+        else:
+            pos.append(a)
+            i += 1
+    if any(p.startswith("-") and p != "-" for p in pos):
+        pos.insert(0, "--")
+    return opts + pos
+
+
 def main(argv=None):
     ap = _build_parser()
-    args = ap.parse_args(argv)
+    args = ap.parse_args(_reorder(sys.argv[1:] if argv is None else list(argv)))
 
     if args.from_file:
         with open(args.from_file, encoding="utf-8") as f:
