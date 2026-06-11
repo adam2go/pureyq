@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pureyq"
+version = "0.1.0"
+description = "yq in pure Python: jq syntax over YAML, TOML, XML and CSV - no jq binary, no C extension"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "adam2go" }]
+keywords = ["yq", "yaml", "toml", "xml", "csv", "jq", "query", "pure-python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Text Processing :: Filters",
+]
+dependencies = [
+    "purejq>=0.2",
+    "PyYAML>=5.4",
+    "tomli>=1.2; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+speed = ["orjson"]
+
+[project.urls]
+Homepage = "https://github.com/adam2go/pureyq"
+
+[project.scripts]
+pureyq = "pureyq.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
