@@ -94,16 +94,17 @@ consume the rest.
 
 Measured with [tools/bench.py](tools/bench.py): M-series MacBook, CPython
 3.12, mikefarah yq v4.53.3 (native arm64 binary), kislyuk/yq 3.4.3 over jq
-1.8 — **median of 7 runs, and every workload's outputs verified equal
-across all three tools before timing**. Reproduce:
-`python tools/bench.py --verify`.
+1.8 — **five independent rounds, each the median of 7 runs, and every
+workload's outputs verified equal across all three tools before timing**.
+The numbers below are cross-round medians; round-to-round spread was under
+4%. Reproduce: `python tools/bench.py --verify`.
 
 **Embedded in Python** — editing a k8s manifest, per call:
 
 | | per call |
 |---|---:|
 | `pureyq.apply()` (in-process) | 0.16 ms |
-| spawning the Go yq binary | 5.5 ms |
+| spawning the Go yq binary | 5.4 ms |
 
 In-process beats shelling out ~34x. For agent/automation loops that touch
 many configs, this is the number that matters.
@@ -112,14 +113,14 @@ many configs, this is the number that matters.
 
 | pureyq | yq (Go) | kislyuk/yq (jq wrapper) |
 |---:|---:|---:|
-| 35 ms | 5 ms | 43 ms |
+| 35 ms | 5 ms | 44 ms |
 
 **Command line, big file** — 15 MB YAML, 100k objects, end to end:
 
 | workload | pureyq | yq (Go) | kislyuk/yq |
 |---|---:|---:|---:|
-| filter + count | 7.2 s | 1.0 s | 6.4 s |
-| convert to JSON | 6.5 s | 2.7 s | 6.8 s |
+| filter + count | 7.1 s | 1.0 s | 6.4 s |
+| convert to JSON | 6.4 s | 2.7 s | 6.8 s |
 
 Where the Go binary wins: big-file throughput, by 2–7x. If you can install
 binaries and that is your workload, use mikefarah/yq. pureyq's lane is
