@@ -39,6 +39,51 @@ def _norm_key(k):
     return json.dumps(k, ensure_ascii=False)
 
 
+def _parse_int(s):
+    if s.startswith("0o"):
+        return int(s[2:], 8)
+    if s.startswith("0x"):
+        return int(s[2:], 16)
+    return int(s)  # leading zeros are decimal in 1.2, not octal
+
+
+def _parse_float(s):
+    low = s.lower()
+    if low.endswith("inf"):
+        return float("-inf") if s[0] == "-" else float("inf")
+    if low.endswith("nan"):
+        return float("nan")
+    return float(s)
+
+
+_SENTINEL = object()
+_SCALAR_NODE = yaml.ScalarNode
+
+
+def _fast_scalar(node):
+    """Convert a resolved scalar node directly, skipping construct_object.
+
+    Scalars cannot be recursive and re-constructing an aliased scalar is
+    harmless (immutable values), so the constructor cache and recursion
+    bookkeeping - the bulk of per-node cost on big documents - are pure
+    overhead here. Returns _SENTINEL when the node needs the full path.
+    """
+    if node.__class__ is not _SCALAR_NODE:
+        return _SENTINEL
+    tag = node.tag
+    if tag == "tag:yaml.org,2002:str":
+        return node.value
+    if tag == "tag:yaml.org,2002:int":
+        return _parse_int(node.value)
+    if tag == "tag:yaml.org,2002:float":
+        return _parse_float(node.value)
+    if tag == "tag:yaml.org,2002:bool":
+        return node.value[0] in "tT"
+    if tag == "tag:yaml.org,2002:null":
+        return None
+    return _SENTINEL
+
+
 class CoreLoader(yaml.SafeLoader):
     def construct_mapping(self, node, deep=False):
         # jq object keys are strings. Stringify non-string keys *while*
@@ -47,9 +92,25 @@ class CoreLoader(yaml.SafeLoader):
         self.flatten_mapping(node)
         mapping = {}
         for key_node, value_node in node.value:
-            key = _norm_key(self.construct_object(key_node, deep=True))
-            mapping[key] = self.construct_object(value_node, deep=deep)
+            key = _fast_scalar(key_node)
+            if key is _SENTINEL:
+                key = self.construct_object(key_node, deep=True)
+            if not isinstance(key, str):
+                key = _norm_key(key)
+            value = _fast_scalar(value_node)
+            if value is _SENTINEL:
+                value = self.construct_object(value_node, deep=deep)
+            mapping[key] = value
         return mapping
+
+    def construct_sequence(self, node, deep=False):
+        out = []
+        for child in node.value:
+            v = _fast_scalar(child)
+            if v is _SENTINEL:
+                v = self.construct_object(child, deep=deep)
+            out.append(v)
+        return out
 
 
 class CoreDumper(yaml.SafeDumper):
@@ -64,6 +125,7 @@ class CoreDumper(yaml.SafeDumper):
 if getattr(yaml, "__with_libyaml__", False):
     class CoreCLoader(yaml.CSafeLoader):
         construct_mapping = CoreLoader.construct_mapping
+        construct_sequence = CoreLoader.construct_sequence
 
     class CoreCDumper(yaml.CSafeDumper):
         ignore_aliases = CoreDumper.ignore_aliases
@@ -115,22 +177,11 @@ def _construct_bool(loader, node):
 
 
 def _construct_int(loader, node):
-    s = loader.construct_scalar(node)
-    if s.startswith("0o"):
-        return int(s[2:], 8)
-    if s.startswith("0x"):
-        return int(s[2:], 16)
-    return int(s)  # leading zeros are decimal in 1.2, not octal
+    return _parse_int(loader.construct_scalar(node))
 
 
 def _construct_float(loader, node):
-    s = loader.construct_scalar(node)
-    low = s.lower()
-    if low.endswith("inf"):
-        return float("-inf") if s[0] == "-" else float("inf")
-    if low.endswith("nan"):
-        return float("nan")
-    return float(s)
+    return _parse_float(loader.construct_scalar(node))
 
 
 # Explicitly tagged 1.1 types are mapped onto the JSON data model so the jq

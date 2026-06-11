@@ -17,7 +17,7 @@ from purejq import (JqError, JqParseError, all_outputs,  # noqa: F401
 from . import formats
 from .formats.yaml12 import YamlError, dump, dump_all, load, load_all  # noqa: F401
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = ["compile", "first", "all_outputs", "apply",
            "load", "load_all", "dump", "dump_all",
            "JqError", "JqParseError", "YamlError"]

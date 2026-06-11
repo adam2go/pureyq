@@ -94,40 +94,40 @@ consume the rest.
 
 Measured with [tools/bench.py](tools/bench.py): M-series MacBook, CPython
 3.12, mikefarah yq v4.53.3 (native arm64 binary), kislyuk/yq 3.4.3 over jq
-1.8 — **five independent rounds, each the median of 7 runs, and every
+1.8 — **three independent rounds, each the median of 7 runs, and every
 workload's outputs verified equal across all three tools before timing**.
-The numbers below are cross-round medians; round-to-round spread was under
-4%. Reproduce: `python tools/bench.py --verify`.
+The numbers below are cross-round medians.
+Reproduce: `python tools/bench.py --verify`.
 
 **Embedded in Python** — editing a k8s manifest, per call:
 
 | | per call |
 |---|---:|
-| `pureyq.apply()` (in-process) | 0.16 ms |
+| `pureyq.apply()` (in-process) | 0.15 ms |
 | spawning the Go yq binary | 5.4 ms |
 
-In-process beats shelling out ~34x. For agent/automation loops that touch
+In-process beats shelling out ~36x. For agent/automation loops that touch
 many configs, this is the number that matters.
 
 **Command line, small file** — 40-line k8s manifest, startup included:
 
 | pureyq | yq (Go) | kislyuk/yq (jq wrapper) |
 |---:|---:|---:|
-| 35 ms | 5 ms | 44 ms |
+| 33 ms | 6 ms | 49 ms |
 
 **Command line, big file** — 15 MB YAML, 100k objects, end to end:
 
 | workload | pureyq | yq (Go) | kislyuk/yq |
 |---|---:|---:|---:|
-| filter + count | 7.1 s | 1.0 s | 6.4 s |
-| convert to JSON | 6.4 s | 2.7 s | 6.8 s |
+| filter + count | 5.1 s | 1.1 s | 6.7 s |
+| convert to JSON | 5.9 s | 2.8 s | 7.1 s |
 
-Where the Go binary wins: big-file throughput, by 2–7x. If you can install
-binaries and that is your workload, use mikefarah/yq. pureyq's lane is
-everywhere binaries can't go, in-process embedding, and doing what the
-jq-wrapper approach does without needing jq. (One caveat on the Go side:
-its compact-JSON mode `-I0` is quadratic on large arrays — converting the
-same 20k-row file takes it 104 s vs pureyq's 1.2 s — so agents asking for
+On big files pureyq is 15–25% faster than the jq-wrapper approach, while
+also removing its jq-binary requirement. Where the Go binary wins:
+big-file throughput, by 2–5x; if you can install binaries and that is
+your workload, use mikefarah/yq. (One caveat on the Go side: its
+compact-JSON mode `-I0` is quadratic on large arrays — converting a
+20k-row file takes it 104 s vs pureyq's ~1 s — so agents asking for
 compact JSON from big YAML hit a wall pureyq doesn't have.)
 
 ## Correctness, measured
